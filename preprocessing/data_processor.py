@@ -22,8 +22,8 @@ class DataProcessor:
         initial_indices = initial_data.index.unique()
         initial_data.index = initial_data.date.factorize()[0]
         self.numerical_data_history = initial_data[self.numerical_cols]
-        if len(initial_indices) > buffer_size:
-            self.numerical_data_history = self.numerical_data_history.loc[initial_indices[-buffer_size:]]
+#        if len(initial_indices) > buffer_size:
+#            self.numerical_data_history = self.numerical_data_history.loc[initial_indices[-buffer_size:]]
     
     def _add_new(self,df):
         if len(self.numerical_data_history.index.unique()) >= self.buffer_size:

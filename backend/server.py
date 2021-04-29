@@ -19,17 +19,6 @@ consumer = None
 stop_flag = Event()
 
 
-def get_data():
-    global x
-    x += 1000
-    return {"portfolio": x,
-            "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-            random.choice(list(company_and_ticks.values())): int(random.uniform(-1, 1) * 10),
-            random.choice(list(company_and_ticks.values())): int(random.uniform(-1, 1) * 10),
-            random.choice(list(company_and_ticks.values())): int(random.uniform(-1, 1) * 10)
-            }
-
-
 @app.route('/events')
 def server_side_event():
     """ Function to publish server side event """
@@ -37,7 +26,7 @@ def server_side_event():
         if consumer is None:
             time.sleep(20)
         for msg in consumer:
-            msg_json = json.loads(msg.decode('utf-8'))
+            msg_json = json.loads(msg.value.decode('utf-8'))
             print(msg_json)
             portfolio_value= {}
             transaction_values = []
@@ -46,8 +35,6 @@ def server_side_event():
                     portfolio_value["y"] = value
                 elif key == "timestamp":
                     portfolio_value["x"] = datetime.fromtimestamp(value/1e3)
-                elif key == "ticker":
-                    continue
                 else:
                     for key_stock, value_stock in msg_json['stock_deltas'].items():
                         if value_stock == 0:
@@ -79,13 +66,11 @@ def stop_thread():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Stream tweets to stdout or kafka topic')
-    parser.add_argument('-H', '--host', metavar='<hostname_port>', default='localhost:9092',
-                        help='Hostname:port of bootstrap server')
-    parser.add_argument('-d', '--date', metavar='<date>', help='date to associate with message')
-    parser.add_argument('-t', '--topic', metavar='<topic_name>', help='Kafka topic name')
-    global consumer
-    if argparse.host and argparse.topic:
-        topic = argparse.topic
+    parser.add_argument('topic', metavar='<topic_name>', help='Kafka topic name')
+    parser.add_argument('hosts', nargs='+', metavar='<hosts>', help='Space separated list of Hostname:port of bootstrap servers')
+    args = parser.parse_args()
+    if args.hosts and args.topic:
+        topic = args.topic
         consumer = KafkaConsumer(topic, auto_offset_reset='latest', \
-                bootstrap_servers=[argparse.host], api_version=(0, 10), consumer_timeout_ms=1000)
+                bootstrap_servers=args.hosts, api_version=(0, 10), consumer_timeout_ms=1000)
     socketio.run(app,host='0.0.0.0', port=5000)

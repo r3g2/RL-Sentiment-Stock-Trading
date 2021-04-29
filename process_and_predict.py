@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import json
+import math
 import time
 import numpy as np
 from config import config
@@ -17,7 +18,7 @@ current_df = None
 cur_stock_quants = { tick : 0 for tick in config.stock_tickers }
 
 class Predicter(Thread):
-    def __init__(self, event, model, producer, topic):
+    def __init__(self,event, model, producer, topic):
         Thread.__init__(self)
         self.stopped = event
         self.model = model
@@ -33,9 +34,13 @@ class Predicter(Thread):
         global current_df
         global cur_stock_quants
         df = None
-        lock = threading.RLock()
+        lock = RLock()
         with lock:
             df = current_df
+
+        if df is None:
+            return
+
         self.model.add_data(df)
         action,states, next_obs, rewards = self.model.predict()
 
@@ -49,7 +54,7 @@ class Predicter(Thread):
         timestamp = time.time()
         stock_deltas = { tick : int(stock_quant_map[tick] - cur_stock_quants[tick]) for tick in config.stock_tickers }
         cur_stock_quants = stock_quant_map
-        message_obj = { "portfolio": portfolio, "timestamp":timestamp, "stock_deltas": stock_deltas, "ticker": ticker}
+        message_obj = { "portfolio": portfolio, "timestamp":timestamp, "stock_deltas": stock_deltas}
         self.output(message_obj)
 
 
@@ -57,9 +62,10 @@ class Predicter(Thread):
         if self.producer is None:
             print(message)
         else:
+            print("prediction message {0}".format(message))
             if self.topic is None:
                 raise ValueError("topic not supplied")
-            key = "{0}_{1}".format(message["ticker"],message["timestamp"])
+            key = str(math.ceil(message["timestamp"]))
             try:
                 key_bytes = bytes(key, encoding='utf-8')
                 value = json.dumps(message)
@@ -93,28 +99,31 @@ if __name__=="__main__":
     data_processor = DataProcessor(FeatureEngineer(),initial_data)
     
     new_numerical = YahooDownloader(datetime.datetime.strftime(yday,fmt),datetime.datetime.strftime(tday,fmt), config.stock_tickers).fetch_data()
+    new_sentiment = generate_sentiment_scores(datetime.datetime.strftime(yday,fmt),datetime.datetime.strftime(yday,fmt))
     # set up model to train on initial data
-    model = setup_model(initial_data, load_path)
+    load_path = "./trained_models/a2c_2019-2020_80k.zip"
+    model = setup_model(initial_data)
 
     while consumer is None:
         sleep(20)
 
-    stop_flag = Event()
-    th = MyThread(stop_flag,predict)
+    event = Event()
+    th = Predicter(event, model, producer, args.write_topic)
     th.start()
 
     init_from_file()
     try:
         for msg in consumer:
-            msg_json = json.loads(msg.decode('utf-8'))
-            scores = get_sentiment_score(msg_json["text"], msg_json["ticker"])
-            print("Computed score {0} for stock ticker {1}".format(score, msg_json["ticker"]))
+            msg_json = json.loads(msg.value.decode('utf-8'))
+            scores = get_sentiment_score(msg_json["text"][:500], msg_json["ticker"])
+            print("Computed score {0} for stock ticker {1}".format(scores[msg_json["ticker"]], msg_json["ticker"]))
             # construct new sentiment df
-            sentiment_df['sentiment'] = scores.values()
-            new_df=data_processor.process_data(new_numerical,sentiment_df)
+            new_sentiment['sentiment'] = scores.values()
+            new_df=data_processor.process_data(new_numerical,new_sentiment)
+            print(new_df)
             current_df = new_df
 
     except KeyboardInterrupt:
         save_to_file()
-        stop_flag.set()
+        event.set()
 
