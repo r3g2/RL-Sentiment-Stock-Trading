@@ -19,7 +19,6 @@ consumer = None
 stop_flag = Event()
 
 
-@app.route('/events')
 def server_side_event():
     """ Function to publish server side event """
     while True:
@@ -34,7 +33,7 @@ def server_side_event():
                 if key == "portfolio":
                     portfolio_value["y"] = value
                 elif key == "timestamp":
-                    portfolio_value["x"] = datetime.fromtimestamp(value/1e3)
+                    portfolio_value["x"] = datetime.fromtimestamp(value).strftime("%m/%d/%Y, %H:%M:%S")
                 else:
                     for key_stock, value_stock in msg_json['stock_deltas'].items():
                         if value_stock == 0:
@@ -54,8 +53,6 @@ def server_side_event():
 @socketio.on('connect')
 def continuous_thread():
     global stop_flag
-    thread_start = Thread(stop_flag, server_side_event)
-    thread_start.start()
 
 
 @socketio.on('disconnect')
@@ -69,6 +66,8 @@ if __name__ == '__main__':
     parser.add_argument('topic', metavar='<topic_name>', help='Kafka topic name')
     parser.add_argument('hosts', nargs='+', metavar='<hosts>', help='Space separated list of Hostname:port of bootstrap servers')
     args = parser.parse_args()
+    thread_start = Thread(target=server_side_event)
+    thread_start.start()
     if args.hosts and args.topic:
         topic = args.topic
         consumer = KafkaConsumer(topic, auto_offset_reset='latest', \

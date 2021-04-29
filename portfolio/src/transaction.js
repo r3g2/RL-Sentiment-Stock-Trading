@@ -11,7 +11,7 @@ class Transaction extends Component {
         }
     }
     componentDidMount() {
-    const url = "http://127.0.0.1:5000/"
+    const url = "/"
     this.socket = socketIOClient(url)
       this.socket.on('transaction', data=> {
           console.log(data)
