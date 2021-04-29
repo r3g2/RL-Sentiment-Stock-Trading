@@ -69,8 +69,8 @@ def main():
 
     # Create training environment
     e_train = create_training_environment(train_data,env_kwargs=env_kwargs)
-    save_model_path = '/Users/rickgentry/github/BigData/RL-Sentiment-Stock-Trading/trained_models/a2c_2019-2020_80k'
-    trained_model = train_model(e_train,"a2c_2019-2020_log",save_model_path=save_model_path,train_timesteps=80000)
+    save_model_path = '/Users/rickgentry/github/BigData/RL-Sentiment-Stock-Trading/trained_models/a2c_2019-2020_100k'
+    trained_model = train_model(e_train,"a2c_2019-2020_100k_log",save_model_path=save_model_path,train_timesteps=100000)
     print("DONE")
 
 if __name__ == "__main__":

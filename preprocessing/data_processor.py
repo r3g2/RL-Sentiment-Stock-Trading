@@ -3,10 +3,16 @@ import numpy as np
 import pandas as pd
 import sys
 import datetime
+<<<<<<< Updated upstream
+=======
+import os
+import sys
+from finrl.config import config
+>>>>>>> Stashed changes
 from finrl.marketdata.yahoodownloader import YahooDownloader
 from finrl.preprocessing.preprocessors import FeatureEngineer
 from finrl.preprocessing.data import data_split
-
+print(os.path.relpath("/Users/rickgentry/github/BigData/RL-Sentiment-Stock-Trading"))
 sys.path.append("/Users/rickgentry/github/BigData/RL-Sentiment-Stock-Trading")
 from config.config import stock_tickers
 
@@ -61,6 +67,9 @@ def generate_sentiment_scores(start_date,end_date,tickers=stock_tickers,time_fmt
     df = pd.DataFrame(data,columns=['date','tic'])
     df['sentiment'] = scores
     return df
+
+
+
 
 def test_process_data():
     start_date = '2020-11-01'
