@@ -22,7 +22,7 @@ class DataProcessor:
         initial_indices = initial_data.index.unique()
         initial_data.index = initial_data.date.factorize()[0]
         self.numerical_data_history = initial_data[self.numerical_cols]
-        self.last_date = self.numerical_data_history.date.unique().tail(1)
+        self.last_date = self.numerical_data_history.date.tail(1)
         # if len(initial_indices) > buffer_size:
         #     self.numerical_data_history = self.numerical_data_history.loc[initial_indices[-buffer_size:]]
     
