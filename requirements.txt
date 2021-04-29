@@ -23,6 +23,9 @@ wheel
 #twitter
 tweepy
 
+#stream
+kafka
+
 #yahoo finance
 yfinance
 
