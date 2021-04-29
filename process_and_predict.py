@@ -62,7 +62,7 @@ class Predicter(Thread):
             key = "{0}_{1}".format(message["ticker"],message["timestamp"])
             try:
                 key_bytes = bytes(key, encoding='utf-8')
-                value = json.dumps(comment)
+                value = json.dumps(message)
                 value_bytes = bytes(value, encoding='utf-8')
                 self.producer.send(self.topic, key=key_bytes, value=value_bytes)
             except Exception as e:
@@ -110,8 +110,9 @@ if __name__=="__main__":
             scores = get_sentiment_score(msg_json["text"], msg_json["ticker"])
             print("Computed score {0} for stock ticker {1}".format(score, msg_json["ticker"]))
             # construct new sentiment df
-            new_sentiment = 
-            new_df=data_processor.process_data(new_numerical,new_sentiment)
+            sentiment_df['sentiment'] = scores.values()
+            new_df=data_processor.process_data(new_numerical,sentiment_df)
+            current_df = new_df
 
     except KeyboardInterrupt:
         save_to_file()
