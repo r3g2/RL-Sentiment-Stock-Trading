@@ -1,4 +1,4 @@
-
+import json
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import pipeline
 import torch
@@ -60,5 +60,16 @@ def update_ewma(prev_stat, data_point, alpha):
     
     return data_point*alpha + (1-alpha) * prev_stat
 
+
+def init_from_file():
+    global dic
+    try:
+        dic = json.load(open("sentiment_scores.json","r"))
+    except FileNotFoundError as e:
+        print("scores file not found, initializing with 0")
+
+def save_to_file():
+    global dic
+    json.dump(dic, open("sentiment_scores.json","w"))
 
 
