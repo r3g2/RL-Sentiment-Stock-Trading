@@ -12,7 +12,7 @@ import math
 
 class TweetStreamListener(tweepy.StreamListener):
 
-    def __init__(self, topic, host, end_date):
+    def __init__(self, topic, hosts, end_date):
         self.backoff_timeout = 1
         super(TweetStreamListener,self).__init__()
         self.query_string = list()
@@ -21,7 +21,7 @@ class TweetStreamListener(tweepy.StreamListener):
         self.topic = topic
         self.producer = None
         if self.topic:
-            self.producer = KafkaProducer(bootstrap_servers=[host], api_version=(0, 10))
+            self.producer = KafkaProducer(bootstrap_servers=hosts, api_version=(0, 10))
 
         #self.query_string.extend(list(company_and_ticks.values()))
         #self.query_string.remove("V")
@@ -34,7 +34,7 @@ class TweetStreamListener(tweepy.StreamListener):
         #send message on namespace
         tweet = self.construct_tweet(status)
         if (tweet) and self.producer:
-            key_bytes = bytes(f"{tweet['tic']}_{tweet['timestamp']}", encoding='utf-8')
+            key_bytes = bytes(f"{tweet['ticker']}_{tweet['timestamp']}", encoding='utf-8')
             value_bytes = bytes(json.dumps(tweet), encoding='utf-8')
             self.producer.send(self.topic, key=key_bytes, value=value_bytes)
 
@@ -86,10 +86,10 @@ class TweetStreamListener(tweepy.StreamListener):
 
 class TwitterStreamer:
 
-    def __init__(self, topic,host, end_date='2021-12-01'):
+    def __init__(self, topic,hosts, end_date='2021-12-01'):
         self.twitter_api = None
         self.__get_twitter_connection()
-        self.listener = TweetStreamListener(topic, host,end_date)
+        self.listener = TweetStreamListener(topic, hosts,end_date)
         self.tweet_stream = tweepy.Stream(auth=self.twitter_api.auth, listener=self.listener, tweet_mode='extended')
 
     def __get_twitter_connection(self):
@@ -108,17 +108,16 @@ if __name__=="__main__":
 
     #init twitter connection
     parser = argparse.ArgumentParser(description='Stream tweets to stdout or kafka topic')
-    parser.add_argument('-H', '--host', metavar='<hostname_port>', default='localhost:9092',
-                        help='Hostname:port of bootstrap server')
+    parser.add_argument('topic', metavar='<topic_name>', help='Kafka topic name')
+    parser.add_argument('hosts', nargs='+', metavar='<hosts>', help='Space separated list of Hostname:port of bootstrap servers')
     parser.add_argument('-d', '--date', metavar='<date>', help='date to associate with message')
-    parser.add_argument('-t', '--topic', metavar='<topic_name>', help='Kafka topic name')
     topic = None
     args = parser.parse_args()
     if args.topic is not None:
         topic = args.topic
 
-    if args.date
-        twitter_streamer = TwitterStreamer(topic, args.host, args.date)
+    if args.date:
+        twitter_streamer = TwitterStreamer(topic, args.hosts, args.date)
     else:
-        twitter_streamer = TwitterStreamer(topic, args.host)
+        twitter_streamer = TwitterStreamer(topic, args.hosts)
     twitter_streamer.start_tweet_streaming()

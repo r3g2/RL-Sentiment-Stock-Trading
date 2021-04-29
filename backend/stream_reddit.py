@@ -21,7 +21,7 @@ class CommentsFetcher (threading.Thread):
         self.producer = producer
         self.topic = topic
         self.end_date = end_date
-        self.die = Event()
+        self.die = threading.Event()
         lock = threading.RLock()
         with lock:
             self.sr_obj = redditClient.subreddit(subreddit)
@@ -91,7 +91,7 @@ if __name__=='__main__':
     # start fetch thread for every subreddit
     fetch_threads = []
     for sr in subreddits:
-        th = CommentsFetcher(sr, companies, producer=producer, topic=args.topic, end_date=args.end_date)
+        th = CommentsFetcher(sr, companies, producer=producer, topic=args.topic, end_date=args.date)
         th.start()
         fetch_threads.append(th)
 

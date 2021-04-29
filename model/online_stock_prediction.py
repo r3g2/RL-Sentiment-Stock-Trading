@@ -17,6 +17,10 @@ from config.config import stock_tickers
 from env.env_stocks import StockEnv
 from env.env_onlinestocktrading import OnlineStockTradingEnv
 
+stock_tickers=['MMM','AXP','AMGN','AAPL','BA','CAT','CVX','CSCO','KO','DIS','DOW','GS','HD','HON','IBM','INTC','JNJ','JPM','MCD','MRK','MSFT','NKE','PG','CRM','TRV','UNH','VZ','V','WBA','WMT']
+
+stock_tickers=['MMM','AXP','AMGN','AAPL','BA','CAT','CVX','CSCO','KO','DIS','DOW','GS','HD','HON','IBM','INTC','JNJ','JPM','MCD','MRK','MSFT','NKE','PG','CRM','TRV','UNH','VZ','V','WBA','WMT']
+
 class OnlineStockPrediction:
 
     def __init__(self, e_trade_gym, model):
@@ -24,11 +28,8 @@ class OnlineStockPrediction:
         self.env_trade, self.cur_obs = self.e_trade_gym.get_sb_env()
         self.model = model
 
-
     def add_data(self,df):
         self.e_trade_gym._update_data(df)
-
-
 
     def predict(self):
         #print("CURRENT OBSERVATION:" , self.cur_obs)
@@ -40,7 +41,6 @@ class OnlineStockPrediction:
 
     def run(self):
         pass
-
 
 def setup_model(initial_data,model_type='a2c',load_path=''):
     indicator_list = config.TECHNICAL_INDICATORS_LIST + ['sentiment']
@@ -88,6 +88,31 @@ def get_initial_data(numerical_df,sentiment_df,use_turbulence=False):
     df.fillna(0)
     return df
 
+def setup_model(initial_data):
+    indicator_list = config.TECHNICAL_INDICATORS_LIST + ['sentiment']
+    stock_dimension = len(initial_data.tic.unique())
+    state_space = 1 + 2*stock_dimension + len(indicator_list)*stock_dimension
+    env_kwargs = {
+    "hmax": 100, 
+    "initial_amount": 1000000, 
+    "buy_cost_pct": 0.001, 
+    "sell_cost_pct": 0.001, 
+    "state_space": state_space, 
+    "stock_dim": stock_dimension, 
+    "tech_indicator_list": indicator_list, 
+    "action_space": stock_dimension, 
+    "reward_scaling": 1e-4,
+    "print_verbosity":5
+    }
+    e_train_gym = StockTradingEnv(df = train_data, **env_kwargs)
+    env_train, _ = e_train_gym.get_sb_env()
+    e_trade_gym = OnlineStockTradingEnv(trade_data.loc[0], **env_kwargs)
+    training_agent = DRLAgent(env=env_train)
+    model_a2c = training_agent.get_model("a2c")
+    feature_engineer = FeatureEngineer()
+    online_stock_pred = OnlineStockPrediction(e_trade_gym,model_a2c)
+    return online_stock_pred
+
 def fetch_initial_numerical(trade_date,prev_days=30,time_fmt="%Y-%m-%d"):
     start_date = datetime.datetime.strptime(trade_date,time_fmt) - datetime.timedelta(30)
     numerical_df = YahooDownloader(start_date=start_date.strftime(time_fmt),end_date=trade_date,ticker_list=stock_tickers).fetch_data()
@@ -107,7 +132,6 @@ def test_setup_model():
 
 def main():
     start_date = '2020-01-01'
-    trade_start_date='2020-12-01'
     end_date='2021-01-01'
     ticker_list=stock_tickers
     numerical_df = YahooDownloader(start_date=start_date,end_date=end_date,ticker_list=ticker_list).fetch_data()
@@ -154,4 +178,4 @@ def main():
         print("Rewards: ", rewards)
 
 if __name__ == "__main__":
-    test_setup_model()
+    main()

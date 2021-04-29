@@ -1,8 +1,8 @@
 from __future__ import division, absolute_import, print_function
 import numpy as np
 import pandas as pd
+import sys
 import datetime
-from finrl.config import config
 from finrl.marketdata.yahoodownloader import YahooDownloader
 from finrl.preprocessing.preprocessors import FeatureEngineer
 from finrl.preprocessing.data import data_split
@@ -57,7 +57,7 @@ def generate_sentiment_scores(start_date,end_date,tickers=stock_tickers,time_fmt
     dates = pd.date_range(start_date,end_date).to_pydatetime()
     dates = np.array([datetime.datetime.strftime(r,time_fmt) for r in dates])
     data = np.array(np.meshgrid(dates,tickers)).T.reshape(-1,2)
-    scores = np.random.uniform(low=-1.0,high=1.0,size=(len(data),1))
+    scores = np.zeros(shape=(len(data),1))
     df = pd.DataFrame(data,columns=['date','tic'])
     df['sentiment'] = scores
     return df
