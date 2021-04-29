@@ -6,26 +6,28 @@ import threading
 import time
 
 from kafka import KafkaProducer
+from datetime import datetime
 
 redditClient = None
 
 class CommentsFetcher (threading.Thread):
-    die = False
     sr_obj = None
     companies = {}
-    def __init__(self, subreddit, companies, exit_on_fail=False, producer=None, topic=None):
+    def __init__(self, subreddit, companies, producer=None, topic=None, end_date='2021-12-01', exit_on_fail=False):
         threading.Thread.__init__(self)
         self.name = 'fetch_comments_{0}'.format(subreddit)
         self.companies = companies
         self.exit_on_fail = exit_on_fail
         self.producer = producer
         self.topic = topic
+        self.end_date = end_date
+        self.die = Event()
         lock = threading.RLock()
         with lock:
             self.sr_obj = redditClient.subreddit(subreddit)
 
     def run(self):
-        while not self.die:
+        while not self.die.is_set():
             try:
                 self.fetchComments()
             except Exception as e:
@@ -34,12 +36,11 @@ class CommentsFetcher (threading.Thread):
                 else:
                     print("Thread {1}, Error {0} occurred while streaming comments, continuing".format(e, self.name))
 
-    def join(self):
-        self.die = True
-        super().join()
+    def stopth(self):
+        self.die.set()
 
     def fetchComments(self):
-        for comment in self.sr_obj.stream.comments(skip_existing=True, pause_after=5):
+        for comment in self.sr_obj.stream.comments(pause_after=5):
             comment_text = comment.body.casefold()
             for ticker in self.companies:
                 casefolded_company = self.companies[ticker].casefold()
@@ -47,7 +48,7 @@ class CommentsFetcher (threading.Thread):
                         ' {0}'.format(ticker) in comment.body or
                         '{0} '.format(casefolded_company) in comment_text or
                         ' {0}'.format(casefolded_company) in comment_text):
-                    comment_obj = { "ticker": ticker, "text": comment.body, "timestamp": math.ceil(time.time_ns()/1000000) }
+                    comment_obj = { "ticker": ticker, "text": comment.body, "timestamp": math.ceil(time.time_ns()/1000000), "date": self.end_date}
                     self.output(comment_obj)
                     break
 
@@ -60,7 +61,7 @@ class CommentsFetcher (threading.Thread):
             key = "{0}_{1}".format(comment["ticker"],comment["timestamp"])
             try:
                 key_bytes = bytes(key, encoding='utf-8')
-                value = json.dumps(comment_obj)
+                value = json.dumps(comment)
                 value_bytes = bytes(value, encoding='utf-8')
                 self.producer.send(self.topic, key=key_bytes, value=value_bytes)
             except Exception as e:
@@ -68,8 +69,9 @@ class CommentsFetcher (threading.Thread):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Stream reddit comments to stdout or kafka topic')
-    parser.add_argument('-t', '--topic', metavar='<topic_name>', help='Kafka topic name')
-    parser.add_argument('-H', '--host', metavar='<hostname_port>', default='localhost:9092', help='Hostname:port of bootstrap server')
+    parser.add_argument('topic', metavar='<topic_name>', help='Kafka topic name')
+    parser.add_argument('hosts', nargs='+', metavar='<hosts>', help='Space separated list of Hostname:port of bootstrap servers')
+    parser.add_argument('-d', '--date', metavar='<date>', help='date to associate with message')
     args = parser.parse_args()
     creds = json.loads(open("creds.json","r").read())
     redditClient = praw.Reddit(client_id=creds['client_id'],
@@ -84,12 +86,12 @@ if __name__=='__main__':
 
     producer = None
     if args.topic is not None:
-       producer = KafkaProducer(bootstrap_servers=[args.host], api_version=(0, 10))
+       producer = KafkaProducer(bootstrap_servers=args.hosts, api_version=(0, 10))
 
     # start fetch thread for every subreddit
     fetch_threads = []
     for sr in subreddits:
-        th = CommentsFetcher(sr, companies, producer, args.topic)
+        th = CommentsFetcher(sr, companies, producer=producer, topic=args.topic, end_date=args.end_date)
         th.start()
         fetch_threads.append(th)
 
@@ -98,7 +100,7 @@ if __name__=='__main__':
             time.sleep(2)
     except KeyboardInterrupt:
         for th in fetch_threads:
-            th.join()
+            th.stopth()
 
 
 """
