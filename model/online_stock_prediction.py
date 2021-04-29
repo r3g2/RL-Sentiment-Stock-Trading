@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 import datetime
-#from finrl.config import config
+from finrl.config import config
 from finrl.marketdata.yahoodownloader import YahooDownloader
 from finrl.preprocessing.preprocessors import FeatureEngineer
 from finrl.preprocessing.data import data_split
@@ -44,7 +44,7 @@ class OnlineStockPrediction:
 
 def setup_model(initial_data,model_type='a2c',load_path=''):
     indicator_list = config.TECHNICAL_INDICATORS_LIST + ['sentiment']
-    stock_dimension = len(trade_data.tic.unique())
+    stock_dimension = len(initial_data.tic.unique())
     state_space = 1 + 2*stock_dimension + len(indicator_list)*stock_dimension
     env_kwargs = {
     "hmax": 100, 
@@ -69,13 +69,14 @@ def setup_model(initial_data,model_type='a2c',load_path=''):
         print("LOADING MODEL PARAMETERS")
         model = model.load(load_model_path)
     online_stock_pred = OnlineStockPrediction(e_trade_gym,model)
+    print(online_stock_pred.predict())
     return online_stock_pred
 
 def generate_sentiment_scores(start_date,end_date,tickers=stock_tickers,time_fmt="%Y-%m-%d"):
     dates = pd.date_range(start_date,end_date).to_pydatetime()
     dates = np.array([datetime.datetime.strftime(r,time_fmt) for r in dates])
     data = np.array(np.meshgrid(dates,tickers)).T.reshape(-1,2)
-    scores = np.random.uniform(low=-1.0,high=1.0,size=(len(data),1))
+    scores = np.zeros((len(data),1))
     df = pd.DataFrame(data,columns=['date','tic'])
     df['sentiment'] = scores
     return df
@@ -86,7 +87,6 @@ def get_initial_data(numerical_df,sentiment_df,use_turbulence=False):
     df = numerical_df.merge(sentiment_df,on=["date","tic"],how="left")
     df.fillna(0)
     return df
-
 
 def setup_model(initial_data):
     indicator_list = config.TECHNICAL_INDICATORS_LIST + ['sentiment']
@@ -113,6 +113,22 @@ def setup_model(initial_data):
     online_stock_pred = OnlineStockPrediction(e_trade_gym,model_a2c)
     return online_stock_pred
 
+def fetch_initial_numerical(trade_date,prev_days=30,time_fmt="%Y-%m-%d"):
+    start_date = datetime.datetime.strptime(trade_date,time_fmt) - datetime.timedelta(30)
+    numerical_df = YahooDownloader(start_date=start_date.strftime(time_fmt),end_date=trade_date,ticker_list=stock_tickers).fetch_data()
+    return numerical_df
+
+def test_setup_model():
+    time_fmt="%Y-%m-%d"
+    trade_start_date='2020-12-01'
+    ticker_list=stock_tickers
+    numerical_df = fetch_initial_numerical(trade_start_date)
+    start_date = datetime.datetime.strptime(trade_start_date,time_fmt) - datetime.timedelta(30)
+    sentiment_df = generate_sentiment_scores(start_date.strftime(time_fmt),trade_start_date)
+    initial_data = get_initial_data(numerical_df,sentiment_df)
+    print(initial_data)
+    osp = setup_model(initial_data)
+    return osp
 
 def main():
     start_date = '2020-01-01'
