@@ -34,12 +34,7 @@ class DataProcessor:
         return self.numerical_data_history
 
     def process_data(self,numerical_df,sentiment_df):
-        df_date = numerical_df.date.unique()
-        if df_date == self.last_date:
-            features_df = self.numerical_data_history.tail(len(numerical_df.tic.unique()))[config.TECHNICAL_INDICATORS_LIST]
-            new_feature_df = pd.concat([numerical_df,features_df],axis=1)
-        else:
-            new_feature_df = self.compute_technical_indicators(numerical_df)
+        new_feature_df = self.compute_technical_indicators(numerical_df)
         new_df = new_feature_df.reset_index().merge(sentiment_df,on=['date','tic']).set_index('index')
         return new_df
 

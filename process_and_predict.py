@@ -49,7 +49,7 @@ class Predicter(Thread):
         reserve = next_obs[0]
         stock_prices = np.array(next_obs[1:31])
         stock_quants = np.array(next_obs[31:61])
-        portfolio = reserve + sum(stock_prices*stock_quants)
+        portfolio = int(reserve + sum(stock_prices*stock_quants))
 
         timestamp = time.time()
         stock_deltas = { tick : int(stock_quant_map[tick] - cur_stock_quants[tick]) for tick in config.stock_tickers }
