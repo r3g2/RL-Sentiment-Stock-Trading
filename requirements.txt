@@ -26,7 +26,10 @@ tweepy
 #yahoo finance
 yfinance
 
-
-
-
-
+#server
+Flask
+Flask-Cors
+redis
+flask-sse 
+gunicorn 
+gevent
