@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 from gym.utils import seeding
@@ -9,7 +10,9 @@ import matplotlib.pyplot as plt
 import pickle
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common import logger
-from env_stocks import StockEnv
+sys.path.append("/Users/rickgentry/github/BigData/RL-Sentiment-Stock-Trading")
+
+from env.env_stocks import StockEnv
 
 class OnlineStockTradingEnv(StockEnv):
     """A stock trading environment for OpenAI gym"""

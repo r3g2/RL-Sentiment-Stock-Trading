@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 import datetime
-from finrl.config import config
+#from finrl.config import config
 from finrl.marketdata.yahoodownloader import YahooDownloader
 from finrl.preprocessing.preprocessors import FeatureEngineer
 from finrl.preprocessing.data import data_split
@@ -12,9 +12,10 @@ from finrl.env.env_stocktrading import StockTradingEnv
 from finrl.model.models import DRLAgent
 from finrl.trade.backtest import backtest_stats, backtest_plot, get_daily_return, get_baseline
 
-sys.path.append(os.path.join(os.path.dirname(__file__),"..","env"))
-from env_stocks import StockEnv
-from env_onlinestocktrading import OnlineStockTradingEnv
+sys.path.append("/Users/rickgentry/github/BigData/RL-Sentiment-Stock-Trading")
+from config.config import stock_tickers
+from env.env_stocks import StockEnv
+from env.env_onlinestocktrading import OnlineStockTradingEnv
 
 class OnlineStockPrediction:
 
@@ -41,9 +42,36 @@ class OnlineStockPrediction:
         pass
 
 
+def setup_model(initial_data,model_type='a2c',load_path=''):
+    indicator_list = config.TECHNICAL_INDICATORS_LIST + ['sentiment']
+    stock_dimension = len(trade_data.tic.unique())
+    state_space = 1 + 2*stock_dimension + len(indicator_list)*stock_dimension
+    env_kwargs = {
+    "hmax": 100, 
+    "initial_amount": 1000000, 
+    "buy_cost_pct": 0.001, 
+    "sell_cost_pct": 0.001, 
+    "state_space": state_space, 
+    "stock_dim": stock_dimension, 
+    "tech_indicator_list": indicator_list, 
+    "action_space": stock_dimension, 
+    "reward_scaling": 1e-4,
+    "print_verbosity":5
+    }
+    cur_date = initial_data.date.unique()[-1]
+    trade_data = initial_data[initial_data.date==cur_date]
+    
+    e_trade_gym = OnlineStockTradingEnv(trade_data, **env_kwargs)
+    env_trade,_ = e_trade_gym.get_sb_env()
+    trading_agent = DRLAgent(env=env_trade)
+    model = trading_agent.get_model(model_type)
+    if load_path:
+        print("LOADING MODEL PARAMETERS")
+        model = model.load(load_model_path)
+    online_stock_pred = OnlineStockPrediction(e_trade_gym,model)
+    return online_stock_pred
 
-
-def generate_sentiment_scores(start_date,end_date,tickers=config.DOW_30_TICKER,time_fmt="%Y-%m-%d"):
+def generate_sentiment_scores(start_date,end_date,tickers=stock_tickers,time_fmt="%Y-%m-%d"):
     dates = pd.date_range(start_date,end_date).to_pydatetime()
     dates = np.array([datetime.datetime.strftime(r,time_fmt) for r in dates])
     data = np.array(np.meshgrid(dates,tickers)).T.reshape(-1,2)
@@ -63,7 +91,7 @@ def main():
     start_date = '2020-01-01'
     trade_start_date='2020-12-01'
     end_date='2021-01-01'
-    ticker_list=config.DOW_30_TICKER
+    ticker_list=stock_tickers
     numerical_df = YahooDownloader(start_date=start_date,end_date=end_date,ticker_list=ticker_list).fetch_data()
     sentiment_df = generate_sentiment_scores(start_date,end_date)
     initial_data = get_initial_data(numerical_df,sentiment_df)
@@ -97,6 +125,7 @@ def main():
     #trained_a2c = agent.train_model(model=model_a2c, tb_log_name='a2c',total_timesteps=10000)
     feature_engineer = FeatureEngineer()
     online_stock_pred = OnlineStockPrediction(e_trade_gym,model_a2c)
+
     for i in range(1,trade_data.index.unique().max()):
         print(trade_data.loc[i])
         online_stock_pred.add_data(trade_data.loc[i])

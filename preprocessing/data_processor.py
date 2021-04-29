@@ -7,6 +7,8 @@ from finrl.marketdata.yahoodownloader import YahooDownloader
 from finrl.preprocessing.preprocessors import FeatureEngineer
 from finrl.preprocessing.data import data_split
 
+sys.path.append("/Users/rickgentry/github/BigData/RL-Sentiment-Stock-Trading")
+from config.config import stock_tickers
 
 class DataProcessor:
 
@@ -51,7 +53,7 @@ def get_initial_data(numerical_df,sentiment_df,use_turbulence=False):
     df.fillna(0)
     return df
 
-def generate_sentiment_scores(start_date,end_date,tickers=config.DOW_30_TICKER,time_fmt="%Y-%m-%d"):
+def generate_sentiment_scores(start_date,end_date,tickers=stock_tickers,time_fmt="%Y-%m-%d"):
     dates = pd.date_range(start_date,end_date).to_pydatetime()
     dates = np.array([datetime.datetime.strftime(r,time_fmt) for r in dates])
     data = np.array(np.meshgrid(dates,tickers)).T.reshape(-1,2)
@@ -63,7 +65,7 @@ def generate_sentiment_scores(start_date,end_date,tickers=config.DOW_30_TICKER,t
 def test_process_data():
     start_date = '2020-11-01'
     end_date='2021-01-01'
-    ticker_list=config.DOW_30_TICKER
+    ticker_list=stock_tickers
     numerical_df = YahooDownloader(start_date=start_date,end_date=end_date,ticker_list=ticker_list).fetch_data()
     sentiment_df = generate_sentiment_scores(start_date,end_date)
     initial_data = get_initial_data(numerical_df,sentiment_df)
