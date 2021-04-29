@@ -1,6 +1,7 @@
 import './App.css';
 import { Component } from 'react';
 //import {TransitionGroup} from 'react-transition-group';
+import socketIOClient from "socket.io-client";
 class Transaction extends Component {
 
     constructor() {
@@ -8,13 +9,18 @@ class Transaction extends Component {
         this.state = {
             transactionData: []
         }
-        this.eventSource = new EventSource("http://127.0.0.1:5000/events");
     }
     componentDidMount() {
-        this.eventSource.addEventListener("transactionValues", e =>
-      this.updateTransactionValues(JSON.parse(e.data)))
+    const url = "http://127.0.0.1:5000/"
+    this.socket = socketIOClient(url)
+      this.socket.on('transaction', data=> {
+          console.log(data)
+          this.updateTransactionValues(data)
+      })
     }
-
+    componentDidUnmount() {
+        this.socket.off('transaction')
+    }
     updateTransactionValues = (data) => {
         this.setState({
             transactionData:[...data,...this.state.transactionData ]

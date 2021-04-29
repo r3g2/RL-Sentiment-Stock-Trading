@@ -2,6 +2,7 @@ import './App.css';
 import { Component } from 'react';
 import Portfolio from './portfolio'
 import Transaction from './transaction'
+import socketIOClient from "socket.io-client";
 class App extends Component {
 
   constructor() {
@@ -10,21 +11,35 @@ class App extends Component {
       totalPortfolioValue: 0,
       portfolioValues: [],
       initialInvestment: 1000000,
-      
+
     }
-    this.eventSource = new EventSource("http://127.0.0.1:5000/events");
 
   }
 
   componentDidMount() {
-    this.eventSource.addEventListener("portFolioValues", e =>
-      this.updateState(JSON.parse(e.data)))
+    /*this.eventSource.addEventListener("portFolioValues", e =>
+      this.updateState(JSON.parse(e.data)))*/
+    const url = "http://127.0.0.1:5000/"
+    this.socket = socketIOClient(url)
+
+    this.socket.on("connect", () => {
+      console.log("Socket Connected");
+    });
+
+    this.socket.on("portfolio", data => {
+      console.log("hello")
+      console.log(data);
+      this.updateState(data)
+    })  
   }
 
+  componentDidUnmount() {
+    this.socket.off("portfolio")
+  }
   updateState = (data) => {
     this.setState({
-      portfolioValues:[...this.state.portfolioValues, data],
-      totalPortfolioValue:data["y"]
+      portfolioValues: [...this.state.portfolioValues, data],
+      totalPortfolioValue: data["y"]
     })
   }
 
@@ -49,11 +64,11 @@ class App extends Component {
         <div className="portfolio-graph">
           <Portfolio
             portfolioValues={this.state.portfolioValues}
-            />
+          />
         </div>
         <div className="transaction-box">
-        <Transaction />
-     </div>
+          <Transaction />
+        </div>
       </div>
     )
   }

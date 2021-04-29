@@ -1,16 +1,19 @@
-from flask import Flask
+from flask import Flask, Response
+from flask_socketio import SocketIO, send, emit
 from flask_sse import sse
 from flask_cors import CORS
 from datetime import datetime
-
+import json
 app = Flask(__name__)
 CORS(app)
-app.config["REDIS_URL"] = "redis://127.0.0.1"
-app.register_blueprint(sse, url_prefix='/events')
+#app.config["REDIS_URL"] = "redis://127.0.0.1"
+#app.register_blueprint(sse, url_prefix='/events')
+socketio = SocketIO(app, cors_allowed_origins='*')
 import random
 import time
 import threading
 from stock_metadata import company_and_ticks
+
 x = 0
 
 
@@ -24,10 +27,12 @@ def get_data():
             random.choice(list(company_and_ticks.values())): int(random.uniform(-1, 1) * 10)
             }
 
+@app.route('/events')
 def server_side_event():
     """ Function to publish server side event """
-    with app.app_context():
+    while True:
         new_data = get_data()
+        time.sleep(15)
         print(new_data)
         portfolio_value= {}
         transaction_values = []
@@ -45,20 +50,16 @@ def server_side_event():
                     transaction["operation"] = "BUY"
                 transaction["qty"] = abs(value)
                 transaction_values.append(transaction)
-        sse.publish(portfolio_value, type='portFolioValues')
-        sse.publish(transaction_values, type='transactionValues')
-        print("Event Scheduled at ",datetime.now())
+        socketio.emit('portfolio', portfolio_value)
+        socketio.emit('transaction', transaction_values)
+        #sse.publish(portfolio_value, type='portFolioValues')
+        #sse.publish(transaction_values, type='transactionValues')
 
+@socketio.on('connect')
 def continuous_thread():
-    while True:
-        server_side_event()
-        time.sleep(3)
+    thread_start = threading.Thread(target=server_side_event)
+    thread_start.start()
 
 
 if __name__ == '__main__':
-    test_thread = threading.Thread(target=continuous_thread())
-    try:
-        test_thread.start()
-        app.run(debug=True,host='0.0.0.0',port=5000, threaded=True)
-    finally:
-        test_thread.join()
+    socketio.run(app,host='0.0.0.0',port=5000)
