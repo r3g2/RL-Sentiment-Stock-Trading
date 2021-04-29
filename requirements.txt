@@ -29,7 +29,4 @@ yfinance
 #server
 Flask
 Flask-Cors
-redis
-flask-sse 
-gunicorn 
-gevent
+flask_socketio

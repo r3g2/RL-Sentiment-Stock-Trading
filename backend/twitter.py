@@ -3,18 +3,25 @@ import tweepy
 import time
 from twitter_keys import *
 from stock_metadata import company_and_ticks
-from pprint import pprint
+import argparse
 import re
-import sys
 # init server
+import json
+from kafka import KafkaProducer
+import math
 
 class TweetStreamListener(tweepy.StreamListener):
 
-    def __init__(self):
+    def __init__(self, topic):
         self.backoff_timeout = 1
         super(TweetStreamListener,self).__init__()
         self.query_string = list()
         self.query_string.extend(list(company_and_ticks.keys()))
+        self.topic = topic
+        self.producer = None
+        if self.topic:
+            self.producer = KafkaProducer(bootstrap_servers=[args.host], api_version=(0, 10))
+
         #self.query_string.extend(list(company_and_ticks.values()))
         #self.query_string.remove("V")
 
@@ -25,8 +32,10 @@ class TweetStreamListener(tweepy.StreamListener):
 
         #send message on namespace
         tweet = self.construct_tweet(status)
-        if (tweet):
-            print(tweet)
+        if (tweet) and self.producer:
+            key_bytes = bytes(f"{tweet['tic']}_{tweet['date']}", encoding='utf-8')
+            value_bytes = bytes(json.dumps(tweet), encoding='utf-8')
+            self.producer.send(self.topic, key=key_bytes, value=value_bytes)
 
     def on_error(self, status_code):
 
@@ -61,7 +70,7 @@ class TweetStreamListener(tweepy.StreamListener):
                     tweet_data = {
                         "text": TweetStreamListener.sanitize_text(tweet_text),
                         "tic": company_and_ticks[q_string],
-                        "date": status.created_at
+                        "date": math.ceil(status.created_at.timestamp()*1e3)
                     }
                     break
             return tweet_data
@@ -75,10 +84,10 @@ class TweetStreamListener(tweepy.StreamListener):
 
 class TwitterStreamer:
 
-    def __init__(self):
+    def __init__(self, topic):
         self.twitter_api = None
         self.__get_twitter_connection()
-        self.listener = TweetStreamListener()
+        self.listener = TweetStreamListener(topic)
         self.tweet_stream = tweepy.Stream(auth=self.twitter_api.auth, listener=self.listener, tweet_mode='extended')
 
     def __get_twitter_connection(self):
@@ -96,5 +105,12 @@ class TwitterStreamer:
 if __name__=="__main__":
 
     #init twitter connection
-    twitter_streamer = TwitterStreamer()
+    parser = argparse.ArgumentParser(description='Stream reddit comments to stdout or kafka topic')
+    parser.add_argument('-t', '--topic', metavar='<topic_name>', help='Kafka topic name')
+    topic = None
+    args = parser.parse_args()
+    if args.topic is not None:
+        topic = args.topic
+
+    twitter_streamer = TwitterStreamer(topic)
     twitter_streamer.start_tweet_streaming()
