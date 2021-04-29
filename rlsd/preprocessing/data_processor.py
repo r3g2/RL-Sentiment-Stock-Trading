@@ -39,7 +39,8 @@ class DataProcessor:
         full_df = self._add_new(numerical_df)
         feature_df = self.fe.preprocess_data(full_df)
         feature_df.index = feature_df.date.factorize()[0]
-        new_feature_df = feature_df.loc[feature_df.index[-1]]
+        #new_feature_df = feature_df.loc[feature_df.index[-1]]
+        new_feature_df = feature_df.tail(len(feature_df.tic.unique()))
         return new_feature_df
 
     def save_to_database(self):

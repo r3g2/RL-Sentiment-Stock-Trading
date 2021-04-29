@@ -3,12 +3,9 @@ import numpy as np
 import pandas as pd
 import sys
 import datetime
-<<<<<<< Updated upstream
-=======
 import os
 import sys
 from finrl.config import config
->>>>>>> Stashed changes
 from finrl.marketdata.yahoodownloader import YahooDownloader
 from finrl.preprocessing.preprocessors import FeatureEngineer
 from finrl.preprocessing.data import data_split
@@ -44,7 +41,8 @@ class DataProcessor:
         full_df = self._add_new(numerical_df)
         feature_df = self.fe.preprocess_data(full_df)
         feature_df.index = feature_df.date.factorize()[0]
-        new_feature_df = feature_df.loc[feature_df.index[-1]]
+        #new_feature_df = feature_df.loc[feature_df.index[-1]]
+        new_feature_df = feature_df.tail(len(feature_df.tic.unique()))
         return new_feature_df
 
     def save_to_database(self):
