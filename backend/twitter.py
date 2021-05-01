@@ -20,6 +20,8 @@ class TweetStreamListener(tweepy.StreamListener):
         self.query_string.extend(list(company_and_ticks.keys()))
         self.topic = topic
         self.producer = None
+        self.start_time = time.time()
+        self.count = 0
         if self.topic:
             self.producer = KafkaProducer(bootstrap_servers=hosts, api_version=(0, 10))
 
@@ -34,6 +36,8 @@ class TweetStreamListener(tweepy.StreamListener):
         #send message on namespace
         tweet = self.construct_tweet(status)
         if (tweet) and self.producer:
+            self.count += 1
+            print("Read {0} tweets in {1} seconds".format(self.count, time.time() - self.start_time))
             key_bytes = bytes(f"{tweet['ticker']}_{tweet['timestamp']}", encoding='utf-8')
             value_bytes = bytes(json.dumps(tweet), encoding='utf-8')
             self.producer.send(self.topic, key=key_bytes, value=value_bytes)
@@ -84,6 +88,9 @@ class TweetStreamListener(tweepy.StreamListener):
         tweet = tweet.replace('\n', '').replace('"', '').replace('\'', '')
         return re.sub(r"http\S+", "", tweet)
 
+    def set_start_time(self):
+        self.start_time=time.time()
+
 class TwitterStreamer:
 
     def __init__(self, topic,hosts, end_date='2021-12-01'):
@@ -102,6 +109,8 @@ class TwitterStreamer:
 
     def start_tweet_streaming(self):
         # start stream to listen to company tweets
+
+        self.listener.set_start_time()
         self.tweet_stream.filter(track=self.listener.query_string, languages=['en'])
 
 if __name__=="__main__":

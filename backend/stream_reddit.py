@@ -22,6 +22,8 @@ class CommentsFetcher (threading.Thread):
         self.topic = topic
         self.end_date = end_date
         self.die = threading.Event()
+        self.start_time = time.time()
+        self.count = 0
         lock = threading.RLock()
         with lock:
             self.sr_obj = redditClient.subreddit(subreddit)
@@ -41,6 +43,8 @@ class CommentsFetcher (threading.Thread):
 
     def fetchComments(self):
         for comment in self.sr_obj.stream.comments(pause_after=5):
+            if comment is None:
+                return
             comment_text = comment.body.casefold()
             for ticker in self.companies:
                 casefolded_company = self.companies[ticker].casefold()
@@ -56,6 +60,8 @@ class CommentsFetcher (threading.Thread):
         if self.producer is None:
             print(comment)
         else:
+            self.count += 1
+            print("Read {0} msgs in {1} seconds".format(self.count, time.time()-self.start_time))
             if self.topic is None:
                 raise ValueError("topic not supplied")
             key = "{0}_{1}".format(comment["ticker"],comment["timestamp"])
