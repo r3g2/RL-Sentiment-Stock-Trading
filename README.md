@@ -42,3 +42,6 @@ This is an AI portfolio manager which uses numerical and textual analysis to pre
 	cd portofolio && npm install
 	npm start
 	```
+
+## Frontend Demo:
+![](bigdata.gif)
