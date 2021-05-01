@@ -2,7 +2,7 @@
 
 ## Introduction:
 
-This is an AI portfolio manager which uses numerical and textual analysis to predict the best action to increase the value of portfolio in long run. Sentimental Model is creating an moving average of streaming textual data sources such as reddit and twitter. The moving average is then mapped with technical indicator of each stock and ingested into Reinforcement Learning model which give the output what to buy, what to sell and what to hold. The data pipeline of this application uses kafka for migrating the data from one end to other and application uses react for visualization 
+This is an AI portfolio manager which uses numerical and textual analysis to predict the best action to increase the value of portfolio in long run. Sentimental Model is creating an moving average of streaming textual data sources such as reddit and twitter. The moving average is then mapped with technical indicator of each stock and ingested into Reinforcement Learning model which give the output what to buy, what to sell and what to hold. The data pipeline of this application uses kafka for migrating the data from one end to other and application uses react for visualization.
 
 ## Steps to run the application:
 
